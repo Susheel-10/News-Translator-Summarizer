@@ -19,7 +19,7 @@ st.set_page_config(
 # Constants
 GROQ_API_KEY = os.getenv("API_KEY")  # Get API key from environment variable
 GROQ_API_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
-MODEL = "llama-3.1-70b-versatile"
+MODEL = "llama-3.3-70b-versatile"  # Reverting to known working model
 
 # Available languages for translation
 LANGUAGES = [
@@ -90,11 +90,16 @@ TRANSLATION: <translated_summary>"""
         "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type": "application/json"
     }
+    if not GROQ_API_KEY:
+        return {
+            "success": False,
+            "error": "Missing API Key. Please set API_KEY in your environment."
+        }
     
     payload = {
         "model": MODEL,
         "messages": messages,
-        "temperature": 0.3,  # Lower temperature for more focused outputs
+        "temperature": 0.3,
         "max_tokens": 1024,
         "top_p": 1
     }
@@ -102,15 +107,21 @@ TRANSLATION: <translated_summary>"""
     try:
         response = requests.post(GROQ_API_ENDPOINT, headers=headers, json=payload)
         response.raise_for_status()
+        print(f"Response status: {response.status_code}")
+        print(f"Response content: {response.text}")
         result = response.json()
         return {
             "success": True,
             "content": result["choices"][0]["message"]["content"]
         }
     except requests.exceptions.RequestException as e:
+        try:
+            error_response = response.json()
+        except Exception as json_err:
+            error_response = "No JSON response"
         return {
             "success": False,
-            "error": f"API request failed: {str(e)}"
+            "error": f"API request failed: {str(e)}. Response: {error_response}"
         }
     except Exception as e:
         return {
@@ -182,4 +193,4 @@ def main():
             st.warning("Please provide either a URL or text content.")
 
 if __name__ == "__main__":
-    main() 
+    main()
